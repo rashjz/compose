@@ -1,0 +1,60 @@
+version: "3.1"
+services:
+  mariadb:
+    build:
+      context: mariadb
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: $MYSQL_PASSWORD
+    healthcheck:
+      test: "mysql --user=root --password=$MYSQL_PASSWORD  -e 'SELECT VARIABLE_NAME,VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS'"
+      interval: 10s
+      retries: 30
+  tomcat:
+    build:
+      context: tomcat
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    extra_hosts:
+      - "docker-host:127.0.0.1"
+    depends_on:
+      - mariadb
+    links:
+      - mariadb
+  static-ui:
+    build:
+      context: static-ui
+      dockerfile: Dockerfile
+    ports:
+      - "8088:80"
+  wordpress:
+    build:
+      context: wordpress
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - 8085:80
+    environment:
+      WORDPRESS_DB_HOST: mariadb
+      WORDPRESS_DB_USER: root
+      WORDPRESS_DB_PASSWORD: $MYSQL_PASSWORD
+      WORDPRESS_DB_NAME: worldpress
+  grafana:
+    build:
+      context: grafana
+      dockerfile: Dockerfile
+    ports:
+      - 3000:3000
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: $GF_ADMIN_PASSWORD
+    links:
+      - mariadb
+    depends_on:
+      - mariadb
+#    volumes:
+#      - grafana_data:/var/lib/grafana
+#      - ./grafana/provisioning/:/etc/grafana/provisioning/
